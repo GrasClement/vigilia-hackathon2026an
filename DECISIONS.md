@@ -44,3 +44,29 @@ passe par une synchro d'équipe et s'ajoute ici.
   lexical local, dont la sémantique est connue. Forme des items à
   confirmer sur le premier jour non vide (enveloppe {"data": [...]}
   vérifiée).
+- 2026-07-03 — Révision architecture : les blocs B1-B4 (acquisition,
+  nettoyage, matching lexical/métadonnées, matching sémantique) sont
+  supprimés du découpage. La recherche server-side de l'API Tricoteuses
+  (search + filtre de date, un appel par veille) fait tout le travail que
+  ces quatre blocs couvraient ; seul le filtrage par `exclusion` reste
+  local. Les anciens modules (`fetch.py`, `clean.py`, `match_lexical.py`,
+  `match_meta.py`, `match_semantique.py`) restent archivés dans
+  `src/archive/`, conservés pour mémoire, hors du chemin principal.
+  Renumérotation en B0-B6 (voir `docs/architecture.md`).
+- 2026-07-03 — Albert API recentré sur la synthèse du digest, plus la
+  recherche sémantique : un appel `POST /v1/chat/completions` par run,
+  limité aux `extrait` déjà en base, produit un paragraphe de 3-5 phrases
+  qui ouvre le digest sans jamais remplacer les extraits cités. Nouveau
+  bloc B4 (« Synthèse par Albert API »), qui remplace l'ancien bloc
+  d'évaluation et calibration.
+- 2026-07-03 — Table Grist `veilles` reformulée : colonnes
+  `id | type | liste | actif | source | exclusion` (remplace
+  `libelle | type | expression | exclusions | actif`). `type` gagne la
+  valeur `sujet` (renommage de `theme`) ; `source` désigne la ressource
+  Tricoteuses interrogée (`amendements`, `questions`, ...), ce qui
+  généralise la table aux extensions du bloc B6 sans nouveau contrat.
+  Table `resultats` allégée : colonnes `score` et `methode` retirées
+  (plus de matching local à noter), le tri se fait sur `date_depot`.
+  Doc détaillée par API créée : `docs/api-tricoteuses.md`,
+  `docs/api-grist.md`, `docs/api-albert.md`, `docs/api-tchap-maubot.md`,
+  `docs/dashboards.md`.
