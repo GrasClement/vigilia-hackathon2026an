@@ -4,9 +4,9 @@ Veille parlementaire souveraine
 
 ### Description courte
 
-Chaque utilisateur décrit ses sujets d'intérêt dans un tableau Grist
+Chaque utilisateur décrit ses sujets d'intérêt dans **Grist**
 (mot-clé, thème en français, parlementaire, dossier) et reçoit chaque matin
-sur Tchap un digest sourcé des travaux de l'Assemblée qui le concernent,
+sur **Tchap** un digest sourcé des travaux de l'Assemblée qui le concernent,
 avec l'extrait qui justifie chaque alerte. Le système suit ensuite le
 devenir des documents détectés (amendement adopté, rejeté).
 
@@ -45,7 +45,8 @@ qui tombe dans Tchap.
 
 ### Contributeurs
 
-- [Prénom Nom]
+- Lucien Mirlicourtois
+- Cédric Allain
 
 ### Ressources utilisées
 
