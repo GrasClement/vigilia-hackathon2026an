@@ -1,7 +1,7 @@
 # Organisation du hackathon — équipe, rythme et contributions
 
-Version finale. Complément du document d'architecture
-(`blocs_projet_veille_parlementaire.md`). Hypothèse de travail : deux jours
+Version révisée. Complément du document d'architecture
+(`docs/architecture.md`). Hypothèse de travail : deux jours
 sur place, 3 à 12 personnes à géométrie variable, majoritairement étudiants,
 pas de profil devops — d'où un principe unique qui gouverne tout ce qui
 suit : rien ne doit exiger d'infrastructure à maintenir, tout doit être
@@ -37,12 +37,14 @@ Environ une demi-journée du porteur. Rien ici n'est rattrapable sur place.
    procédure peut prendre du délai — c'est le seul prérequis du projet qui
    dépend d'un tiers. Lancer la demande immédiatement ; fallback mail codé
    si elle n'aboutit pas à temps.
-4. **Spike Tricoteuses** (1 h chrono) : trancher l'option A/B du bloc B1,
-   consigner dans `DECISIONS.md`.
+4. **Vérification Tricoteuses** (1 h chrono) : confirmer la fraîcheur et
+   la forme des réponses de l'API `parlement.tricoteuses.fr/v2` sur un
+   jour réel, consigner dans `DECISIONS.md`.
 5. **Salon Tchap d'équipe** créé, distinct du salon de diffusion du digest.
-6. **File d'issues amorcée** : les dix blocs, plus trois ou quatre issues
-   étiquetées `debutant` (gabarit du digest, test de clean.py, veilles
-   d'exemple, inventaire des champs du JSON réel).
+6. **File d'issues amorcée** : les six blocs (B0-B6, voir
+   `docs/architecture.md`), plus trois ou quatre issues étiquetées
+   `debutant` (gabarit du digest, veilles d'exemple, inventaire des champs
+   de l'API Tricoteuses).
 7. **MÉTIER préparé** : a lu la doc open data AN et rédigé cinq veilles
    réelles brouillon.
 
@@ -94,9 +96,9 @@ tâches prêtes à être prises. La file `debutant` doit contenir en permanence
 deux ou trois issues non attribuées ; l'intégrateur la réalimente à chaque
 synchro. Tâches parallélisables sans dépendance, idéales pour un arrivant :
 veilles supplémentaires et vues Grist, tests sur données réelles, gabarits
-de digest, backfill de B8, exploration du dump questions (B10.1), relecture
-du pitch. Un arrivant présent une demi-journée ne touche pas aux blocs cœur
-(B4, B9) : on lui propose mieux — une tâche qu'il peut finir et signer
+de digest, exploration de la ressource questions (B6.1), relecture du
+pitch. Un arrivant présent une demi-journée ne touche pas aux blocs cœur
+(B1, B4) : on lui propose mieux — une tâche qu'il peut finir et signer
 dans sa demi-journée.
 
 ## Déroulé réel (programme officiel)
@@ -109,18 +111,15 @@ vendredi soir, pas samedi.
 
 **Vendredi 3 juillet.** 13h30 : pitch d'une minute du défi. 14h :
 attribution des blocs et installation — le dépôt s'installe en trois
-commandes, c'est le moment de le prouver — puis spike Tricoteuses
-(clone `--depth 1`, taille et fraîcheur consignées dans DECISIONS.md).
-B1, B2 et B7 en parallèle dès 14h30. **Jalon 19h (dîner)** : run partiel
-fetch → clean → lexical → Grist depuis main. Après le dîner : B4, B5,
-B6. **Jalon 22h30 : le premier digest tombe dans le salon Tchap.**
-Samedi n'a que quatre heures de code, le produit doit exister vendredi
-soir. Avant de partir : tout est mergé, le cache `data/` du lendemain
-est rempli.
+commandes, c'est le moment de le prouver — puis vérification de l'API
+Tricoteuses (forme des réponses, fraîcheur, consignées dans
+DECISIONS.md). B1 et B3 en parallèle dès 14h30. **Jalon 19h (dîner)** :
+run partiel recherche Tricoteuses → Grist depuis main. Après le dîner :
+B4, B2. **Jalon 22h30 : le premier digest, synthèse Albert comprise,
+tombe dans le salon Tchap.** Samedi n'a que quatre heures de code, le
+produit doit exister vendredi soir. Avant de partir : tout est mergé.
 
-**Samedi 4 juillet.** 9h45 : B4 finalisé si besoin, B8 compact
-(backfill sur un dossier législatif ou un mois de dépôts — l'objectif
-est un chiffre pour le pitch, pas une étude), polissage du digest.
+**Samedi 4 juillet.** 9h45 : polissage B2/B4, B5 (orchestration).
 **13h30 : gel interne**, trente minutes avant le gel officiel de 14h :
 captures d'écran, tag git. 14h-16h : script de restitution — la
 séquence Grist → run.py → Tchap tient exactement dans les trois
@@ -128,31 +127,30 @@ minutes — et deux répétitions chronométrées. 16h : restitution.
 
 ## Démo et plans B
 
-- La démo se joue depuis le cache `data/` : les données du jour sont
-  téléchargées la veille au soir, aucune dépendance au réseau du lieu pour
-  l'acquisition.
+- La démo interroge l'API Tricoteuses en direct ; en cas de coupure
+  réseau au lieu, rejouer sur les fichiers JSON déjà écrits dans Grist
+  lors des runs précédents (aucune dépendance à un cache local dédié).
 - Séquence de trois minutes, qui est exactement le pitch : MÉTIER ajoute une
   veille en direct dans Grist → `run.py` → le digest tombe dans Tchap avec
-  l'extrait justificatif → vue Grist des résultats et du suivi des sorts.
-  No-code, explicabilité, souveraineté : tout y est, sans slide.
-- Le chiffre de B8 ("X détectés, dont Y sans mention littérale du terme")
-  est sur un slide, jamais recalculé en direct.
-- Plans B par étage : Albert indisponible → démo lexical + métadonnées
-  seules, le pipeline tourne quand même ; Tchap indisponible → montrer la
-  table Grist ; tout indisponible → captures d'écran faites au gel
-  interne de 13h30.
+  la synthèse Albert et l'extrait justificatif → vue Grist des résultats et
+  du suivi des sorts. No-code, explicabilité, souveraineté : tout y est,
+  sans slide.
+- Plans B par étage : Albert indisponible → digest sans le paragraphe de
+  synthèse, les extraits sourcés suffisent, le pipeline tourne quand même ;
+  Tchap indisponible → montrer la table Grist ; tout indisponible →
+  captures d'écran faites au gel interne de 13h30.
 
 ## Risques et parades
 
 | Risque | Parade |
 |---|---|
 | Compte bot Tchap pas obtenu à temps | Demande lancée dès maintenant ; fallback mail derrière la même fonction d'envoi |
-| Quotas Albert atteints | Volumes réels testés à J0 via `/v1/me/info` ; top-k dès le premier run |
-| Réseau du lieu capricieux | Cache disque ; dump téléchargé la veille au soir |
-| Tricoteuses indisponible le jour J | Option B (dump officiel) codée en fallback, bascule par variable d'env |
+| Quotas Albert atteints | Volumes réels testés à J0 via `/v1/me/info` ; un seul appel de synthèse par run |
+| Réseau du lieu capricieux | Rejouer la démo sur les données déjà écrites dans Grist |
+| API Tricoteuses indisponible le jour J | Dump officiel AN documenté en dernier recours (voir `docs/api-tricoteuses.md`) |
 | Contrat modifié en douce | Merge par l'intégrateur seul ; contrats dans le document d'architecture |
 | Étudiant perdu ou inoccupé | File `debutant` réalimentée ; binômes ; règle des trente minutes |
-| Dérive de périmètre | `DECISIONS.md` + gel interne samedi 13h30 ; B10 sert de soupape aux idées de dernière minute |
+| Dérive de périmètre | `DECISIONS.md` + gel interne samedi 13h30 ; B6 sert de soupape aux idées de dernière minute |
 | Départ avec du code non mergé | Merge systématique avant tout départ |
 
 ## Après le hackathon

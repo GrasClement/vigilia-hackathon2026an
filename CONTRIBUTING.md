@@ -10,7 +10,7 @@ un commit isolé.
 
 Une branche par bloc de travail, nommée `feature/<bloc>-<sujet>`.
 
-Exemples : `feature/b2-nettoyage`, `feature/b4-match-semantique`
+Exemples : `feature/b1-recherche-grist`, `feature/b4-synthese-albert`
 
 ## Workflow
 
