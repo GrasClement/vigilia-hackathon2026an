@@ -1,0 +1,17 @@
+# Secrets et environnement
+.env
+.venv/
+
+# Données locales (cache, jamais versionnées)
+data/
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Session Matrix du bot
+session/
+crypto_store/
