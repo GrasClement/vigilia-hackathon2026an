@@ -15,7 +15,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 import requests
 
-BASE_URL = "https://parlement.tricoteuses.fr"
+BASE_URL = "https://parlement.tricoteuses.fr/v2"
 
 DATE_FIELDS = {
     "amendements": "dateDepot",
