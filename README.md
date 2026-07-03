@@ -65,4 +65,3 @@ run.py                   # B9 — orchestration
 ## Licence
 
 MIT.
-# vigilia-hackathon2026an

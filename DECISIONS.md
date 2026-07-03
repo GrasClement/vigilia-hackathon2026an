@@ -36,3 +36,11 @@ passe par une synchro d'équipe et s'ajoute ici.
   (disable_chunking, 8 000 caractères, top-k, pas de reranker) ; seule
   retouche : la collection est nommée par run (paramètre), la purge des
   anciennes est reportée après le hackathon.
+- 2026-07-03 — Découverte de l'API REST Tricoteuses
+  (parlement.tricoteuses.fr/v2) : filtres de date + recherche mot-clé
+  côté serveur. Elle devient l'acquisition (fetch_api.py), le clone Git
+  et le dump passent en fallbacks. Le search serveur sert de préfiltre ;
+  la garantie de rappel et l'extrait restent portés par notre matcher
+  lexical local, dont la sémantique est connue. Forme des items à
+  confirmer sur le premier jour non vide (enveloppe {"data": [...]}
+  vérifiée).
