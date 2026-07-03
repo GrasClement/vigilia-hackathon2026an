@@ -15,3 +15,6 @@ __pycache__/
 # Session Matrix du bot
 session/
 crypto_store/
+
+# Settings
+.vscode

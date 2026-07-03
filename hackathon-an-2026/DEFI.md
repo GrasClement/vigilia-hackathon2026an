@@ -12,7 +12,7 @@ devenir des documents détectés (amendement adopté, rejeté).
 
 ### Porteur
 
-[nom du porteur ou de l'équipe]
+Clément Gras
 
 ### Description longue
 
