@@ -77,6 +77,44 @@ appelés) est dans un document dédié :
 - [`docs/dashboards.md`](dashboards.md) — vues et tableau de bord Grist
   (B3)
 
+## Flux dans l'architecture
+
+```
+Grist (table veilles)                     API Tricoteuses (v2)
+  id / type / liste / actif /    ──────►    recherche + filtre de date
+  source / exclusion                         par ressource (amendements,
+        │                                    questions, documents, ...)
+        │  B1 lit les veilles actives              │
+        ▼                                          ▼
+                    B1 — un appel par veille active
+                    (source, liste de mots-clés, jour)
+                              │
+                filtrage local des `exclusion`
+                              │
+                              ▼
+                    Grist (table resultats)
+                 uid / veille / extrait / evolution / ...
+                              │
+              ┌───────────────┴───────────────┐
+              ▼                                ▼
+     B4 — synthèse Albert                B2 — digest Tchap
+   (chat completion sur les          (top par veille + section
+    extraits du jour, 3-5 phrases)    évolutions + synthèse en tête)
+              │                                │
+              └────────────► Tchap (salon de diffusion) ◄────────────┘
+```
+
+Le détail de chaque API (paramètres, quotas, endpoints réellement
+appelés) est dans un document dédié :
+
+- [`docs/api-tricoteuses.md`](api-tricoteuses.md) — acquisition et
+  recherche server-side (B1)
+- [`docs/api-grist.md`](api-grist.md) — lecture des veilles, écriture des
+  résultats (B1, B3)
+- [`docs/api-albert.md`](api-albert.md) — synthèse du digest (B4)
+- [`docs/api-tchap-maubot.md`](api-tchap-maubot.md) — envoi du digest (B2)
+- [`docs/dashboards.md`](dashboards.md) — vues et tableau de bord Grist (B3)
+
 ## Profils de contributeurs
 
 - `DEV` : Python confirmé. Prend les blocs qui touchent aux API externes

@@ -5,7 +5,7 @@ Veille parlementaire souveraine
 ### Description courte
 
 Chaque utilisateur décrit ses sujets d'intérêt dans **Grist**
-(mot-clé, thème en français, parlementaire, dossier) et reçoit chaque matin
+(mot-clé, sujet en français, parlementaire, dossier) et reçoit chaque matin
 sur **Tchap** un digest sourcé des travaux de l'Assemblée qui le concernent,
 avec l'extrait qui justifie chaque alerte. Le système suit ensuite le
 devenir des documents détectés (amendement adopté, rejeté).
@@ -20,24 +20,25 @@ Les outils de veille parlementaire existent, mais ils sont privés, coûteux
 et opaques. Ce défi démontre qu'une veille ciblée, explicable et
 personnalisable se construit entièrement sur l'open data de l'Assemblée
 nationale et les briques souveraines de la suite numérique de l'État :
-Grist pour la configuration et les résultats, Albert API pour l'appariement
-sémantique, Tchap pour la diffusion, Onyxia pour l'hébergement.
+Grist pour la configuration et les résultats, l'API Tricoteuses pour la
+recherche, Albert API pour la synthèse, Tchap pour la diffusion, Onyxia
+pour l'hébergement.
 
 Trois partis pris :
 
 1. **No-code côté utilisateur.** Créer une veille, exclure des termes,
    consulter les résultats : tout se fait dans Grist, sans développeur.
 2. **Explicabilité native.** Chaque alerte cite l'extrait du document qui
-   la justifie — jamais un texte généré seul.
-3. **Garantie de rappel.** Les mots-clés sont appariés en lexical pur ; la
-   recherche sémantique (Albert) ne détecte *en plus* que ce que le lexical
-   rate — et ce surplus est mesuré.
+   la justifie ; la synthèse d'Albert n'est qu'un chapeau de lecture, elle
+   ne remplace jamais la citation.
+3. **Garantie de rappel.** La recherche plein texte server-side de l'API
+   Tricoteuses est le seul moteur de matching : pas de pipeline local à
+   maintenir, un appel par veille suffit.
 
-Déroulé : vendredi, pipeline complet sur les amendements (acquisition
-Tricoteuses, nettoyage, matching lexical et sémantique, écriture Grist,
-premier digest Tchap en soirée) ; samedi, évaluation chiffrée et
-restitution — l'ajout d'une veille en direct dans Grist, un run, le digest
-qui tombe dans Tchap.
+Déroulé : vendredi, pipeline complet sur les amendements (recherche
+Tricoteuses par veille, écriture Grist, premier digest Tchap synthétisé
+par Albert en soirée) ; samedi, polissage et restitution — l'ajout d'une
+veille en direct dans Grist, un run, le digest qui tombe dans Tchap.
 
 ### Image principale
 
