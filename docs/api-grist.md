@@ -1,8 +1,9 @@
 # API Grist — configuration et résultats
 
-Utilisée par `src/veille/grist.py` (bloc B1, lecture/écriture) et par
-MÉTIER via l'interface Grist elle-même (bloc B3, aucun code). Client :
-`requests` sur l'API REST de Grist, pas de bibliothèque tierce.
+Utilisée par `src/veille/grist.py` (B1 lecture/écriture des nouveaux
+résultats, B1.5 mise à jour du sort) et par MÉTIER via l'interface Grist
+elle-même (bloc B3, aucun code). Client : `requests` sur l'API REST de
+Grist, pas de bibliothèque tierce.
 
 Instance : La Suite numérique — `GRIST_BASE_URL`
 (`https://grist.numerique.gouv.fr` par défaut, voir `.env.example`).
@@ -21,8 +22,9 @@ GET /api/docs/{GRIST_DOC_ID}/tables/veilles/records
 
 Filtrer côté client sur `actif = true` (Grist ne fait pas de filtre
 serveur simple sans passer par des vues filtrées). Colonnes du contrat :
-`id`, `type`, `liste`, `actif`, `source`, `exclusion` — voir
-`docs/architecture.md` pour le détail de chaque colonne.
+`id`, `type`, `liste`, `actif`, `source`, `exclusion`, `objectif` — voir
+`docs/architecture.md` pour le détail de chaque colonne. `objectif` est
+lu par B4 (génération de la synthèse), pas seulement par B1.
 
 ## Écrire dans la table `resultats`
 
@@ -36,7 +38,7 @@ vérifie que la paire `(uid, veille)` n'est pas déjà en base — Grist
 lui-même n'a pas de contrainte d'unicité déclarative simple sur deux
 colonnes.
 
-## Mettre à jour une ligne existante (suivi du `sort`)
+## Mettre à jour une ligne existante (bloc B1.5, suivi du `sort`)
 
 ```
 PATCH /api/docs/{GRIST_DOC_ID}/tables/resultats/records
@@ -44,7 +46,9 @@ PATCH /api/docs/{GRIST_DOC_ID}/tables/resultats/records
 
 Corps : `{"records": [{"id": <rowId>, "fields": {"sort": ..., "evolution": ...}}]}`.
 Nécessite de connaître le `rowId` Grist de la ligne (obtenu à la lecture
-initiale ou par une requête de lecture ciblée sur `uid` + `veille`).
+initiale ou par une requête de lecture ciblée sur `uid` + `veille`). C'est
+l'unique écriture du bloc B1.5 : il ne touche jamais les lignes qu'il
+n'a pas identifiées comme changées.
 
 ## Colonne `pertinent`
 

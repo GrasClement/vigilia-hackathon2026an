@@ -37,14 +37,13 @@ Environ une demi-journée du porteur. Rien ici n'est rattrapable sur place.
    procédure peut prendre du délai — c'est le seul prérequis du projet qui
    dépend d'un tiers. Lancer la demande immédiatement ; fallback mail codé
    si elle n'aboutit pas à temps.
-4. **Vérification Tricoteuses** (1 h chrono) : confirmer la fraîcheur et
-   la forme des réponses de l'API `parlement.tricoteuses.fr/v2` sur un
-   jour réel, consigner dans `DECISIONS.md`.
-5. **Salon Tchap d'équipe** créé, distinct du salon de diffusion du digest.
-6. **File d'issues amorcée** : les six blocs (B0-B6, voir
+4. **Spike API Tricoteuses `amendements`** (1 h chrono, bloc B0) : confirmer
+   la fraîcheur, la pagination et la forme des réponses sur un jour réel,
+   consigner dans `docs/api-tricoteuses.md` et `DECISIONS.md`.
+5. **Salon Tchap d'équipe** créé, distinct du salon de diffusion du digest: https://tchap.gouv.fr/#/room/!FrtxQRJxngbuBLxKzS:agent.tchap.gouv.fr?via=agent.tchap.gouv.fr
+6. **File d'issues amorcée** : les blocs B0 à B7 (dont B1.5, voir
    `docs/architecture.md`), plus trois ou quatre issues étiquetées
-   `debutant` (gabarit du digest, veilles d'exemple, inventaire des champs
-   de l'API Tricoteuses).
+   `debutant` (gabarit du digest, veilles d'exemple, inventaire des champs de la ressource `questions` pour l'extension B7.1).
 7. **MÉTIER préparé** : a lu la doc open data AN et rédigé cinq veilles
    réelles brouillon.
 
@@ -111,19 +110,22 @@ vendredi soir, pas samedi.
 
 **Vendredi 3 juillet.** 13h30 : pitch d'une minute du défi. 14h :
 attribution des blocs et installation — le dépôt s'installe en trois
-commandes, c'est le moment de le prouver — puis vérification de l'API
-Tricoteuses (forme des réponses, fraîcheur, consignées dans
-DECISIONS.md). B1 et B3 en parallèle dès 14h30. **Jalon 19h (dîner)** :
-run partiel recherche Tricoteuses → Grist depuis main. Après le dîner :
-B4, B2. **Jalon 22h30 : le premier digest, synthèse Albert comprise,
-tombe dans le salon Tchap.** Samedi n'a que quatre heures de code, le
-produit doit exister vendredi soir. Avant de partir : tout est mergé.
+commandes, c'est le moment de le prouver — puis spike API Tricoteuses
+(forme des réponses, fraîcheur, consignées dans DECISIONS.md). B1, B3 et
+B2 (design de la synthèse) en parallèle dès 14h30 ; B1.5 démarre dès que
+B1 a écrit ses premières lignes. **Jalon 19h (dîner)** : run partiel
+recherche Tricoteuses → Grist (B1) depuis main. Après le dîner : B4
+(génération) puis B5 (publication). **Jalon 22h30 : le premier digest,
+synthèse Albert comprise, tombe dans le salon Tchap.** Samedi n'a que
+quatre heures de code, le produit doit exister vendredi soir. Avant de
+partir : tout est mergé.
 
-**Samedi 4 juillet.** 9h45 : polissage B2/B4, B5 (orchestration).
+**Samedi 4 juillet.** 9h45 : polissage B4/B5, B6 (orchestration).
 **13h30 : gel interne**, trente minutes avant le gel officiel de 14h :
 captures d'écran, tag git. 14h-16h : script de restitution — la
 séquence Grist → run.py → Tchap tient exactement dans les trois
 minutes — et deux répétitions chronométrées. 16h : restitution.
+
 
 ## Démo et plans B
 
@@ -150,7 +152,7 @@ minutes — et deux répétitions chronométrées. 16h : restitution.
 | API Tricoteuses indisponible le jour J | Dump officiel AN documenté en dernier recours (voir `docs/api-tricoteuses.md`) |
 | Contrat modifié en douce | Merge par l'intégrateur seul ; contrats dans le document d'architecture |
 | Étudiant perdu ou inoccupé | File `debutant` réalimentée ; binômes ; règle des trente minutes |
-| Dérive de périmètre | `DECISIONS.md` + gel interne samedi 13h30 ; B6 sert de soupape aux idées de dernière minute |
+| Dérive de périmètre | `DECISIONS.md` + gel interne samedi 13h30 ; B7 sert de soupape aux idées de dernière minute |
 | Départ avec du code non mergé | Merge systématique avant tout départ |
 
 ## Après le hackathon
