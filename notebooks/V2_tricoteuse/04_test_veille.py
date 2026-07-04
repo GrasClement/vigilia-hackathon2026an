@@ -1,12 +1,13 @@
 #%%
+import os
+
 from B1.pipeline_veilles import pipeline_veilles_amendements_jour
 import json
 import requests
 
 DOC_ID = "3XJJmJ8TeyMcRWHEUNj4if"
 TABLE_ID = "Test_pipeline"
-API_KEY = "15ec820ee1f8d920cd7b82a4218f94969d8901ae"
-
+API_KEY = os.environ["GRIST_API_KEY"]
 #%%
 veille_1, veille_2 = pipeline_veilles_amendements_jour(
     jour="2026-07-01",
