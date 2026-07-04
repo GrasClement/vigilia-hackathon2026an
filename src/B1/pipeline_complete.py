@@ -3,7 +3,7 @@ from __future__ import annotations
 """
 Pipeline complète de veille parlementaire.
 
-Cette module :
+Ce module :
 1. lit les requêtes de veille dans une table Grist ;
 2. récupère et nettoie les amendements sur une période ;
 3. applique chaque veille ;
