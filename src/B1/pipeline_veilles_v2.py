@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import json
-import requests
-import polars as pl
 
-
-import requests
 import polars as pl
+import requests
 
 from B1.pipeline_amendements import traiter_amendements_jour
 from veille.filter_user import filtrer_amendements_mots_cles
