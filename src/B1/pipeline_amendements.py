@@ -99,6 +99,7 @@ def selectionner_colonnes_amendements(df: pl.DataFrame) -> pl.DataFrame:
         "acteurRef",
         "documentRef",
         "dateDepot",
+        "codeEtape"
         
     ]
 

@@ -26,3 +26,13 @@ for i, df in enumerate(resultats, start=1):
     print(f"\nVeille {i}")
     print(df.shape)
 # %%
+#%%
+bilan = exporter_veilles_vers_grist(
+    resultats=resultats,
+    doc_id=DOC_ID,
+    api_key=API_KEY,
+    prefixe_table="Sortie",
+)
+
+print(bilan)
+# %%
