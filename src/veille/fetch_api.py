@@ -164,7 +164,7 @@ def build_url(
         ]
     )
 
-    # safe=":" garde les heures lisibles dans l'URL.
+    # safe=":" garde les heures lisibles dans l'URL. Peut être à enlever #TODO
     query = urlencode(params, safe=":")
 
     return f"{BASE_URL}/{resource}?{query}"
