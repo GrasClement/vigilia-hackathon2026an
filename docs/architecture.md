@@ -1,160 +1,90 @@
 # Veille parlementaire — Architecture et découpage en blocs
 
-Version révisée : suivi du sort séparé de la recherche (B1/B1.5), la
-synthèse Albert se pense (B2), se génère (B4) et se publie (B5) dans trois
-blocs distincts, pilotée par un nouveau champ `objectif` sur chaque veille.
-Ce document est la référence du dépôt : tout nouveau contributeur le lit
-avant d'écrire une ligne de code. Il définit les contrats d'interface, les
-blocs de travail (tâches, outils, besoins, profil requis, dépendances) et
-les décisions d'architecture actées.
+Version révisée après la spec B2 : le LLM produit le **message Tchap
+complet** de chaque veille (B4), la publication (B5) devient un envoi
+pur. La priorisation des amendements passe par le reranker Albert avec
+repli déterministe. Ce document est la référence du dépôt : tout nouveau
+contributeur le lit avant d'écrire une ligne de code. Les changements par
+rapport à la version précédente sont consignés dans `DECISIONS.md`.
 
 ## Le projet en trois phrases
 
 Chaque administration, chercheur ou citoyen décrit ses sujets d'intérêt —
-et *pourquoi* ils l'intéressent — dans un tableau Grist (mot-clé, sujet en
-français, parlementaire ou dossier, plus un objectif en une phrase), et
-reçoit chaque matin sur Tchap un digest sourcé des travaux de l'Assemblée
-qui le concernent, avec l'extrait qui justifie chaque alerte et un
-paragraphe de synthèse généré par Albert à partir de cet objectif. Le
-système suit également le devenir des documents détectés (amendement
-adopté, rejeté). Tout repose sur l'open data de l'Assemblée via l'API
-Tricoteuses et les briques souveraines de l'État : Grist, Albert API,
-Tchap (via maubot), hébergement Onyxia.
+et *pourquoi* ils l'intéressent — dans un tableau Grist (mot-clé, sujet,
+parlementaire ou dossier, plus un objectif en une phrase), et reçoit
+chaque matin sur Tchap un message sourcé des travaux de l'Assemblée qui
+le concernent : synthèse rédigée par Albert selon l'objectif déclaré,
+chiffres clés calculés en Python, priorités justifiées, liens vers les
+amendements. Le système suit également le devenir des documents détectés
+(amendement adopté, rejeté). Tout repose sur l'open data de l'Assemblée
+via l'API Tricoteuses et les briques souveraines de l'État : Grist,
+Albert API, Tchap, hébergement Onyxia.
 
 ## Flux dans l'architecture
 
 ```
 Grist (table veilles)                       API Tricoteuses (v2)
   id / type / liste / actif / source /  ──────►  recherche + filtre de date
-  exclusion / objectif                            par ressource (amendements,
-        │                                         questions, documents, ...)
+  exclusion / objectif                            par ressource
+        │                                                │
         │  B1 lit les veilles actives                    │
         ▼                                                ▼
                     B1 — un appel par veille active
-                    (source, liste de mots-clés, jour)
-                              │
-                filtrage local des `exclusion`
+                    filtrage local des `exclusion`
                               │
                               ▼
               Grist (table resultats) — nouvelles lignes
-                uid / veille / extrait / sort / ...
+              (schéma riche : textes complets inclus)
                               │
                               ▼
               B1.5 — suivi du sort (uid déjà en base)
-                 met à jour `sort` et `evolution`
+              met à jour `sortAmendement` et `evolution`
                               │
                               ▼
-              B4 — génération de la synthèse (Albert)
-          (gabarit défini par B2 ; `objectif` de chaque
-           veille [B3] + `extrait`/`evolution` du jour)
+        B4 — génération du message complet (Albert)
+     stats Python → ordre /v1/rerank → niveaux déterministes
+     → rédaction /v1/chat/completions (gabarit défini par B2)
+     → repli : message de secours si Albert indisponible
                               │
                               ▼
-              B5 — publication du digest (Tchap)
-          (synthèse de B4 en tête + top par veille +
-                 évolutions + liens Grist)
+              B5 — envoi sur Tchap (send-only)
+           un message markdown par veille active
                               │
                               ▼
                 Tchap (salon de diffusion)
 ```
 
-B2 (design de la synthèse) et B3 (configuration Grist) n'apparaissent pas
-comme des étapes d'exécution : ce sont des contrats d'entrée, pas du code
-dans le chemin du run — B2 fournit le gabarit que B4 implémente, B3
-fournit les veilles (dont `objectif`) et les vues de consultation.
+B2 (design du message) et B3 (configuration Grist) ne sont pas des
+étapes d'exécution : ce sont des contrats d'entrée. B2 fournit le gabarit
+que B4 implémente, B3 fournit les veilles (dont `objectif`) et les vues.
 
-Le détail de chaque API (paramètres, quotas, endpoints réellement
-appelés) est dans un document dédié :
+Documentation par API :
 
 - [`docs/api-tricoteuses.md`](api-tricoteuses.md) — acquisition et
   recherche server-side (B1)
 - [`docs/api-grist.md`](api-grist.md) — lecture des veilles, écriture et
   mise à jour des résultats (B1, B1.5, B3)
-- [`docs/synthese-design.md`](synthese-design.md) — design de la synthèse
-  (B2)
-- [`docs/api-albert.md`](api-albert.md) — génération de la synthèse (B4)
-- [`docs/api-tchap-maubot.md`](api-tchap-maubot.md) — publication du
-  digest (B5)
-- [`docs/dashboards.md`](dashboards.md) — vues et tableau de bord Grist
-  (B3)
-
-## Flux dans l'architecture
-
-```
-Grist (table veilles)                     API Tricoteuses (v2)
-  id / type / liste / actif /    ──────►    recherche + filtre de date
-  source / exclusion                         par ressource (amendements,
-        │                                    questions, documents, ...)
-        │  B1 lit les veilles actives              │
-        ▼                                          ▼
-                    B1 — un appel par veille active
-                    (source, liste de mots-clés, jour)
-                              │
-                filtrage local des `exclusion`
-                              │
-                              ▼
-                    Grist (table resultats)
-                 uid / veille / extrait / evolution / ...
-                              │
-              ┌───────────────┴───────────────┐
-              ▼                                ▼
-     B4 — synthèse Albert                B2 — digest Tchap
-   (chat completion sur les          (top par veille + section
-    extraits du jour, 3-5 phrases)    évolutions + synthèse en tête)
-              │                                │
-              └────────────► Tchap (salon de diffusion) ◄────────────┘
-```
-
-Le détail de chaque API (paramètres, quotas, endpoints réellement
-appelés) est dans un document dédié :
-
-- [`docs/api-tricoteuses.md`](api-tricoteuses.md) — acquisition et
-  recherche server-side (B1)
-- [`docs/api-grist.md`](api-grist.md) — lecture des veilles, écriture des
-  résultats (B1, B3)
-- [`docs/api-albert.md`](api-albert.md) — synthèse du digest (B4)
-- [`docs/api-tchap-maubot.md`](api-tchap-maubot.md) — envoi du digest (B2)
-- [`docs/dashboards.md`](dashboards.md) — vues et tableau de bord Grist (B3)
+- [`docs/synthese-design.md`](synthese-design.md) — gabarit du message
+  (B2, spec figée)
+- [`docs/api-albert.md`](api-albert.md) — chat completions et rerank (B4)
+- [`docs/synthese-b4.md`](synthese-b4.md) — la brique B4 elle-même
+- [`docs/api-tchap-maubot.md`](api-tchap-maubot.md) — envoi (B5)
+- [`docs/dashboards.md`](dashboards.md) — vues Grist (B3)
 
 ## Profils de contributeurs
 
-- `DEV` : Python confirmé. Prend les blocs qui touchent aux API externes
-  (Tricoteuses, Grist, Albert, Tchap) et à l'assemblage.
-- `DATA` : à l'aise en notebook, code débutant à intermédiaire. Prend
-  l'écriture Grist, le suivi du sort, la génération de la synthèse Albert.
-- `MÉTIER` : connaissance de l'Assemblée et de ses textes, pas de code.
-  Prend la configuration Grist, la qualification des résultats, la
-  conception et la publication du digest. Ce profil porte la
-  démonstration "no code" : tout ce qu'il fait doit être faisable par un
-  futur utilisateur sans développeur.
+- `DEV` : Python confirmé. Blocs touchant aux API externes et à
+  l'assemblage.
+- `DATA` : à l'aise en notebook. Écriture Grist, suivi du sort,
+  génération du message.
+- `MÉTIER` : connaissance de l'Assemblée, pas de code. Configuration
+  Grist, qualification des résultats, spec du message, test de
+  lisibilité. Ce profil porte la démonstration "no code".
 
 ## Contrats d'interface
 
-Ces deux tables sont l'épine dorsale du projet. Un bloc peut être réécrit
-entièrement sans toucher aux autres tant qu'il respecte son contrat. Toute
-modification d'un contrat se décide en synchro d'équipe et se consigne dans
-DECISIONS.md — jamais dans un commit isolé.
-
-### Item Tricoteuses — sortie de l'API, entrée de B1
-
-L'API Tricoteuses livre déjà un texte propre (JSON éclaté, un objet par
-document) : il n'y a plus d'étape de nettoyage local. B1 fait un mapping
-direct des champs utiles, sans extraction HTML :
-
-```python
-{"uid": str,          # identifiant AN, ex. AMANR5L17PO838901B1906P1D1N001548
- "numero": str,        # numéro d'amendement (ou de document) lisible
- "auteur": str,        # nom complet de l'auteur principal
- "texte_ref": str,     # référence du texte législatif visé
- "date_depot": str,    # ISO YYYY-MM-DD
- "place": str,         # division visée, ex. "Article 2 bis"
- "sort": str,          # sort si voté, sinon état ("En traitement")
- "url": str,           # assemblee-nationale.fr/dyn/{leg}/amendements/{uid}
- "expose": str,        # exposé des motifs
- "dispositif": str}    # dispositif
-```
-
-Le détail des champs disponibles par ressource (amendements, questions,
-documents, dossiers...) est documenté dans `docs/api-tricoteuses.md`.
+Toute modification d'un contrat se décide en synchro d'équipe et se
+consigne dans `DECISIONS.md`.
 
 ### Table Grist `veilles` — éditée par MÉTIER (B3), lue par B1 et B4
 
@@ -162,319 +92,159 @@ documents, dossiers...) est documenté dans `docs/api-tricoteuses.md`.
 id | type | liste | actif | source | exclusion | objectif
 ```
 
-- `id` : identifiant de la veille, choisi par MÉTIER (ex. `fiscalite-verte`).
-- `type` : quatre valeurs possibles —
-  - `mot_cle` : un ou plusieurs mots-clés (recherche plein texte
-    Tricoteuses, insensible à la casse) ;
-  - `sujet` : description courte en français d'un sujet d'intérêt,
-    passée telle quelle en recherche plein texte Tricoteuses ;
-  - `parlementaire` : nom du parlementaire à suivre ;
-  - `dossier` : référence du dossier ou du texte législatif à suivre.
-- `liste` : les valeurs recherchées pour cette veille, séparées par des
-  virgules (variantes d'un mot-clé, ou une seule valeur pour
-  parlementaire/dossier).
-- `actif` : booléen (case à cocher Grist). Permet de suspendre une veille
-  sans la supprimer.
-- `source` : ressource Tricoteuses interrogée — `amendements`, `questions`,
-  `documents`, `dossiers`, etc. (voir la liste complète dans
-  `docs/api-tricoteuses.md`).
-- `exclusion` : terme(s), séparés par des virgules, qui annulent un
-  résultat quand ils sont présents dans le texte du document. C'est le
-  seul filtrage encore fait côté client — l'API Tricoteuses n'a pas
-  d'opérateur "NOT" dans sa recherche.
-- `objectif` : texte libre en français décrivant l'intention de la veille
-  (ex. *"repérer les impacts budgétaires pour anticiper les amendements de
-  crédits"*). Fourni tel quel dans le prompt de B4 (voir
-  `docs/synthese-design.md` et `docs/api-albert.md`) : c'est ce qui permet
-  à la synthèse de dire *pourquoi* un document compte, pas seulement
-  *qu'il existe*. Un champ vide reste valide — la synthèse retombe alors
-  sur un résumé neutre des extraits.
+- `type` : `mot_cle`, `sujet`, `parlementaire` ou `dossier`.
+- `liste` : valeurs recherchées, séparées par des virgules.
+- `exclusion` : termes annulant un résultat (seul filtrage client
+  restant, l'API Tricoteuses n'a pas de NOT).
+- `objectif` : texte libre décrivant l'intention de la veille. Fourni
+  tel quel à B4 : il sert de query au reranker et de grille de lecture à
+  la synthèse. Vide = ordre par date et résumé neutre.
 
-### Table Grist `resultats` — écrite par B1, mise à jour par B1.5, lue par B4, B5 et les vues
+### Table Grist `resultats` — écrite par B1, mise à jour par B1.5, lue par B4 et les vues
+
+Schéma riche, textes complets inclus (décision actée : le message de B4
+a besoin du dispositif et de l'exposé sommaire, pas seulement d'un
+extrait) :
 
 ```
-uid | veille | extrait | evolution | texte_ref | auteur | date_depot |
-sort | url | pertinent
+uid | typeAuteur | dispositif | exposeSommaire | sortAmendement |
+etatLibelle | nombreCoSignataires | dateDepot | auteur_uid | auteur_nom |
+auteur_prenom | auteur_civ | auteur_chambre | groupe_politique |
+groupe_politique_abrege | couleur_politique | document_uid |
+dossier_ref_uid | titre_dossier | titre_dossier_court | filtres_trouves |
+jour_veille | veille_id | veille_nom | veille_termes | veille_noms |
+veille_dossiers | veille_source | evolution | pertinent
 ```
 
 - Une ligne par paire document × veille ; un document touchant deux
-  veilles produit deux lignes, chacune avec son extrait. C'est voulu.
-- `extrait` : la justification, toujours citée depuis le document —
-  phrase de l'exposé ou du dispositif contenant le terme recherché (ou,
-  pour `parlementaire`/`dossier`, le champ matché). L'explicabilité est
-  native, jamais générée seule ; la synthèse d'Albert (B4) s'ajoute au
-  digest à côté de l'extrait, elle ne le remplace jamais.
-- `evolution` : renseignée par B1.5 quand le `sort` change après détection
-  ("adopté le JJ/MM"). C'est le suivi du devenir, alimenté gratuitement
-  par le rappel quotidien de l'API sur les mêmes `uid`.
-- `pertinent` : oui/non/vide, rempli à la main par MÉTIER. C'est la
-  vérité terrain utilisée pour ajuster les veilles (mots-clés, exclusions,
-  objectif).
-- Hiérarchisation : tri par `date_depot` dans le digest et les vues ; pas
-  de score numérique à maintenir, la recherche server-side ne renvoie pas
-  de pertinence graduée sur laquelle s'appuyer.
+  veilles produit deux lignes. C'est voulu.
+- `filtres_trouves` : quels termes ont déclenché la détection —
+  l'explicabilité native du système.
+- `evolution` : renseignée par B1.5 quand `sortAmendement` change après
+  détection ("adopté le JJ/MM").
+- `pertinent` : oui/non/vide, rempli à la main par MÉTIER ; vérité
+  terrain pour ajuster les veilles.
+- Pas de colonne URL : l'URL se construit depuis `uid` (fonction Python
+  côté pipeline, colonne calculée Grist côté vues).
+
+### Sortie de B4 — entrée de B5
+
+Une chaîne markdown par veille active, **jamais vide** : le message
+complet (gabarit B2), ou le message fixe "aucun amendement", ou le
+message de secours avec bandeau d'échec si Albert est indisponible. B5
+n'a aucune logique conditionnelle : il envoie ce qu'il reçoit.
 
 ## Blocs de travail
 
-Une issue GitHub par bloc ; les tâches ci-dessous en sont la checklist.
-Branches `feature/<bloc>-<sujet>`, PR vers main, merge par l'intégrateur.
+### B0 — Socle du dépôt · DEV
 
-### B0 — Socle du dépôt · DEV · à faire avant le hackathon
-
-- pyproject.toml géré par UV, ruff (format + check), layout `src/veille/`,
-  `data/` et `.env` dans le .gitignore
-- `.env.example` documentant : `ALBERT_API_KEY`, `GRIST_API_KEY`,
-  `GRIST_DOC_ID`, `TCHAP_BOT_MATRIX_ID`, `TCHAP_BOT_PWD`
-- README : installation en trois commandes sur machine vierge, lien vers ce
-  document, captures des `curl` de validation des trois accès
-- Création du doc Grist (tables `veilles` et `resultats` conformes aux
-  contrats, `objectif` comprise) et du salon Tchap de diffusion, le compte
-  bot y étant invité
-- Spike : interroger `parlement.tricoteuses.fr/v2/amendements` sur un jour
-  réel — pagination, champs présents/absents, valeurs réelles de `sort`,
-  latence — consigner dans `docs/api-tricoteuses.md`
-- `DECISIONS.md` initialisé avec les décisions actées ci-dessous
-
-Besoins : clés Albert, Grist, compte bot Tchap (voir décision "notification").
-Une clé par équipe, stockée dans un canal privé, jamais dans le dépôt.
+Inchangé : pyproject UV, ruff, layout `src/veille/`, `.env.example`
+(`ALBERT_API_KEY`, `GRIST_API_KEY`, `GRIST_DOC_ID`, `TCHAP_BOT_MATRIX_ID`,
+`TCHAP_BOT_PWD`), doc Grist conforme aux contrats, salon Tchap, spike
+Tricoteuses, `DECISIONS.md`.
 
 ### B1 — Recherche et écriture Grist · DEV ou DATA · dépend de B0
 
-- `fetch_api.py` (déjà écrit) : un appel par veille active, sur la
-  ressource `source`, avec `liste` en mots-clés de recherche et la plage
-  de la journée traitée — voir `docs/api-tricoteuses.md`
-- Filtrage local unique restant : un terme d'`exclusion` présent dans le
-  texte (exposé + dispositif, ou champ pertinent de la ressource) annule
-  le résultat
-- Extrait de citation : phrase du texte contenant le terme recherché
-  (fonction utilitaire courte, pas un moteur de matching à maintenir)
-- `grist.py` : lecture de `veilles`, écriture des **nouvelles** lignes de
-  `resultats` par lots via l'API REST
-  (`POST /api/docs/{doc}/tables/{table}/records`) — voir
-  `docs/api-grist.md`
-- Idempotence : jamais de réinsertion d'une paire (uid, veille)
-  existante — c'est ce qui rend tout le pipeline relançable sans
-  précaution
-- Un test du filtrage par exclusion, un test du diff d'idempotence
+Un appel Tricoteuses par veille active ; filtrage `exclusion` local ;
+écriture des **nouvelles** lignes de `resultats` avec les textes
+complets ; idempotence sur (uid, veille) — c'est ce qui rend le pipeline
+relançable. Un test du filtrage, un test du diff d'idempotence.
 
-Ce bloc remplace les anciens blocs d'acquisition, de nettoyage et de
-matching (lexical, métadonnées, sémantique) : l'API Tricoteuses fait déjà
-la recherche server-side avec filtre de date, il n'y a plus de pipeline
-local à écrire ni à maintenir pour ça. Le suivi du sort d'un `uid` déjà en
-base est traité à part, voir B1.5.
+### B1.5 — Suivi du sort · DATA · dépend de B1
 
-Outils : `veille.fetch_api`, requests sur l'API Grist. Pas de classe, pas
-de client tiers.
+Comparer le `sortAmendement` renvoyé par l'API pour les `uid` en base ;
+si changé, PATCH de la ligne et renseignement d'`evolution`. Un test
+dédié.
 
-### B1.5 — Suivi du sort · DATA ou débutant encadré · dépend de B1
+### B2 — Design du message · MÉTIER · aucune dépendance, spec figée
 
-- `grist.maj_sorts` : à chaque run, comparer le `sort` renvoyé par l'API
-  pour les `uid` déjà présents dans `resultats` avec celui stocké ; s'il a
-  changé, mettre à jour la ligne et renseigner `evolution` — voir
-  `docs/api-grist.md` (PATCH sur `resultats`)
-- Isolé de B1 pour que les deux tâches se prennent et se testent en
-  parallèle : B1 ne fait qu'insérer du neuf, B1.5 ne fait que réconcilier
-  l'existant
-- Un test dédié du changement de sort
+Produit `docs/synthese-design.md`, contrat d'entrée de B4. **Acté** : le
+LLM rédige le message complet (📌 Veille, Synthèse, Chiffres clés,
+Priorités, Amendements à ouvrir, Limites), les chiffres viennent
+exclusivement du JSON de stats Python, les niveaux de priorité sont
+fournis et non jugés, le cas déluge est géré en amont (voir B4).
 
-Outils : requests sur l'API Grist, pas de client tiers.
+### B3 — Configuration et vues Grist · MÉTIER · aucune dépendance
 
-### B2 — Design de la synthèse · MÉTIER (+ DEV/DATA en relecture) · aucune dépendance, démarre dès J1 matin
+Inchangé : veilles réelles de démonstration (chacune avec `objectif` —
+désormais doublement utile : query du reranker et grille de la
+synthèse), chart widgets et linked widgets, qualification `pertinent`.
 
-Bloc de réflexion, aucun code. Produit un document écrit
-(`docs/synthese-design.md`, à créer) qui devient le contrat d'entrée de
-B4 : B4 implémente strictement ce que B2 a spécifié, il n'invente pas la
-structure du prompt.
+### B4 — Génération du message · DEV ou DATA · dépend de B1, B1.5, B2, B3
 
-- Structure attendue du paragraphe de synthèse : longueur (3 à 5 phrases),
-  ton, ordre des idées
-- Usage du champ `objectif` de chaque veille : comment il oriente le
-  contenu de la synthèse au-delà d'un simple résumé des extraits
-- La synthèse doit-elle mentionner les évolutions de sort, ou se limiter
-  aux nouveaux résultats du jour ?
-- Cas déluge (PLF) : la synthèse annonce un volume plutôt que de tenter un
-  résumé exhaustif de centaines de documents
-- Un exemple annoté bout en bout : extraits + objectif en entrée →
-  paragraphe de synthèse attendu en sortie
+Module `src/veille/synthese.py`, point d'entrée
+`generer_message(contexte, amendements) -> str`. Pipeline interne :
+stats Python → ordre par `/v1/rerank` (query = objectif, replis :
+`veille_termes` puis tri par date) → niveaux Forte/Moyenne/Faible
+déterministes → K = 25 amendements en texte intégral, le reste en une
+ligne → rédaction par Mistral-Small (temp 0.2, 2 500 tokens) → message de
+secours à bandeau si échec. Détail : `docs/synthese-b4.md`. Deux appels
+API par veille, dans les quotas Expérimentation.
 
-Le format du reste du digest (top 5 par veille au format "titre + deux
-lignes + lien", section évolutions, lien vue Grist) est déjà acté et
-n'est pas un sujet de réflexion ouvert pour ce bloc — B5 l'implémente
-directement.
+### B5 — Envoi sur Tchap · MÉTIER + étudiant · dépend de B4
 
-### B3 — Configuration et vues Grist · MÉTIER · aucun code, aucune dépendance
-
-- Rédiger les veilles réelles de démonstration : mots-clés avec leurs
-  variantes et exclusions, sujets en français, chacune avec un `objectif`
-  en une phrase, en mobilisant la connaissance de l'Assemblée (vocabulaire
-  des exposés des motifs, intitulés des programmes budgétaires, noms
-  usuels des commissions)
-- Construire les vues Grist selon deux mécanismes distincts (voir
-  `docs/dashboards.md`) : des **chart widgets** pour les indicateurs
-  d'agrégat (volumes par jour, répartition par source, taux de
-  pertinence) et des **linked widgets** pour la navigation (résultats
-  filtrés par veille sélectionnée, par texte, par auteur)
-- Qualifier les résultats via la colonne `pertinent` — ce travail est le
-  contrôle qualité qui sert à ajuster les veilles (mots-clés, exclusions,
-  objectif)
-
-Ce bloc démarre dès J1 matin, sans attendre le moindre code.
-
-### B4 — Génération de la synthèse par Albert · DEV ou DATA · dépend de B1, B1.5, B2 et B3
-
-Remplace l'ancien bloc d'évaluation et calibration : l'usage d'Albert
-n'est plus la recherche sémantique (déléguée à Tricoteuses), c'est la
-génération en langage naturel d'un paragraphe de synthèse — et rien
-d'autre : ce bloc ne publie pas, ne connaît pas Tchap.
-
-- Implémente strictement le gabarit défini par B2 : un appel
-  `POST /v1/chat/completions` (Mistral-Small-3.2-24B) qui reçoit, par
-  veille, l'`objectif` (B3) et les `extrait`/`evolution` du jour
-  (B1/B1.5), et renvoie un paragraphe de synthèse en français — voir
-  `docs/api-albert.md`
-- Le prompt ne fournit que les `extrait` déjà en base, jamais le document
-  complet : la synthèse ne peut pas introduire un fait hors des citations
-  déjà sourcées
-- Sortie : une chaîne de caractères, transmise à B5. Ce bloc ne l'ajoute
-  pas lui-même au digest ni ne l'envoie
-- Quotas Albert (offre Expérimentation, vérifiés via `GET /v1/me/info`) :
-  chat 50 req/min et 1 000 req/jour — un seul appel de synthèse par run,
-  largement dans les clous
-- Bascule si Albert est indisponible : renvoyer une chaîne vide plutôt que
-  d'échouer — B5 gère l'absence de synthèse dans le digest
-
-Besoins : clé Albert testée à J0, spec de B2 disponible.
-
-### B5 — Publication du digest sur Tchap · MÉTIER + étudiant · dépend de B4 et B1/B1.5
-
-- Étudiant, `digest.py` : le paragraphe de synthèse de B4 ouvre le
-  digest ; puis, par veille, top 5 trié par `date_depot` au format "titre +
-  deux lignes + lien" (lisible en 30 secondes) ; une section "évolutions"
-  listant les sorts changés (B1.5) ; un lien par veille vers la vue Grist
-  filtrée pour le reste ; envoi par la fonction send-only Tchap
-  (`send_markdown_message`, le markdown est rendu nativement) —
-  voir `docs/api-tchap-maubot.md`
-- En période de déluge (PLF), le digest annonce le volume et montre le
-  top : "212 amendements sur ‹fiscalité verte›, top 5 ci-dessous, le reste
-  dans Grist" — le digest montre le top et annonce le volume, la liste
-  complète vit dans Grist, où elle est triable
-- Si B4 renvoie une chaîne vide (Albert indisponible ou quota atteint), le
-  digest part quand même, sans le paragraphe de tête : les extraits
-  sourcés suffisent à eux seuls
-- MÉTIER : rédiger le gabarit markdown (à partir de la spec B2 pour la
-  partie synthèse), arbitrer ce qui mérite le digest, tester la
-  lisibilité sur mobile (Tchap est d'abord utilisé sur téléphone)
+`digest.py` réduit à l'envoi : pour chaque veille active, poster le
+message de B4 via `send_markdown_message` (markdown rendu nativement).
+Aucune mise en forme, aucune logique de repli — B4 garantit un message
+non vide dans tous les cas. MÉTIER : tester la lisibilité sur mobile,
+arbitrer l'ordre d'envoi des veilles.
 
 ### B6 — Orchestration · DEV · dépend de tout, volontairement trivial
 
-- `run.py` : `veilles (Grist) → recherche + écriture (B1) → suivi du sort
-  (B1.5) → génération de la synthèse (B4) → publication (B5)`, option
-  `--date`, relançable sans doublons (garanti par B1), code de sortie non
-  nul si une étape critique échoue
-- Le pipeline est une suite d'appels de fonctions dans un seul fichier ;
-  l'automatisation = ce fichier dans un ordonnanceur externe (CronJob du
-  catalogue Onyxia ou schedule GitHub Actions), sans une ligne à réécrire
-- Le cron se pose dans la dernière heure du hackathon, seulement si la démo
-  est validée
+`run.py` : `veilles (Grist) → B1 → B1.5 → boucle par veille active
+[B4 → B5]`, séquentiel (pas de parallélisme, les quotas et le volume ne
+le justifient pas), options `--date` et `--veille` (une seule veille,
+pour les tests de prompt sans consommer le RPD), relançable sans
+doublons, code de sortie non nul si une étape critique échoue.
 
-### B7 — Extensions · à ouvrir seulement si B0-B6 tiennent
+### B7 — Extensions · si B0-B6 tiennent
 
-1. **Extension à d'autres corpus Tricoteuses.** Le pipeline B1/B1.5 est
-   déjà générique sur le paramètre `source` : toute ressource Tricoteuses
-   avec un champ de date devient une veille possible sans nouveau code.
-   Par ordre de rentabilité : Questions au Gouvernement (écrites, orales,
-   texte riche, excellent rapport signal/effort) ; Agenda des réunions
-   (veille d'anticipation, "votre sujet passe en commission demain") ;
-   Sénat (ressources `senat-*` de l'écosystème Tricoteuses) ; Comptes
-   rendus (le plus riche mais hors schéma, flux Syceron, parsing ad hoc —
-   dernier de la liste).
-2. **Mode RAG sur les résultats accumulés.** Réutilise les briques
-   d'ingestion/recherche Albert archivées (`src/archive/match_semantique.py`,
-   documentées dans `docs/api-albert.md`) dans un but différent :
-   interroger l'historique cumulé de `resultats`/`extrait`, pas détecter
-   le jour même.
-3. **Mode conversationnel sur ce RAG.** Une boucle question/réponse
-   au-dessus de l'index du point 2, bornée aux extraits déjà sourcés —
-   même principe d'explicabilité que B4 : pas de fait hors du corpus
-   accumulé.
-4. **Extension maubot.** Expose le mode conversationnel du point 3 dans le
-   salon Tchap ; réutilise le compte bot de B5, cette fois avec un plugin
-   qui écoute (B5 reste volontairement send-only).
-5. **Widget Grist sur mesure.** Un widget custom, si le temps le permet ;
-   déroge explicitement à la décision "no-code renforcé" du cœur du
-   projet — assumé comme extension seulement, jamais requis pour la démo.
+Inchangé : autres corpus Tricoteuses ; RAG sur les résultats accumulés ;
+mode conversationnel ; maubot interactif ; widget Grist custom. S'y
+ajoute : rerank comme tie-breaker configurable de la bande "Moyenne"
+(hors chemin principal).
 
 ## Ordre de marche
 
-Calé sur le programme officiel (~8 h de code vendredi, ~4 h samedi,
-gel à 14h, restitution de 3 minutes à 16h) — détail dans
-docs/organisation.md :
-
-- **Avant vendredi 14h** : B0 (dont le spike API amendements), compte bot
-  Tchap demandé.
-- **Vendredi 14h-19h** : B1, B1.5, B3 et B2 (design) en parallèle — B2 ne
-  dépend de rien, il démarre immédiatement. Jalon du dîner : run partiel
-  recherche Tricoteuses → Grist (B1) depuis main.
-- **Vendredi soir** : B4 (génération, une fois B2 et B3 avancés) puis B5
-  (publication). Jalon 22h30 : le premier digest complet, synthèse
-  comprise, tombe dans le salon Tchap.
-- **Samedi 9h45-13h30** : polissage B4/B5, B6 (orchestration) ; gel
-  interne 13h30, puis script de restitution et deux répétitions.
-- B7 pour les mains libres uniquement, sans toucher à main.
-
-À 3 personnes : DEV = B0 + B4 + B6, DATA = B1 + B1.5, MÉTIER = B2 + B3 + B5.
-À 12 : un bloc par personne, étudiants en binôme sur B1/B1.5 et B5.
+Inchangé (détail dans docs/organisation.md) : B0 avant vendredi 14h ;
+B1, B1.5, B3 et B2 en parallèle vendredi après-midi ; B4 puis B5
+vendredi soir (jalon 22h30 : premier message complet dans le salon) ;
+polissage et B6 samedi matin, gel 13h30.
 
 ## Décisions actées — on en reparle volontiers, après la restitution
 
-Chaque réouverture en cours de route coûte une synchro à douze.
-
-- **Source et recherche** : API REST Tricoteuses
-  (`parlement.tricoteuses.fr/v2`) — filtre de date et recherche
-  plein texte côté serveur. Elle remplace l'acquisition locale (clone Git,
-  dump officiel) et le matching local (lexical, métadonnées, sémantique) :
-  un appel par veille suffit. Le dump officiel et le clone Git restent des
-  solutions de repli documentées mais ne sont plus le chemin principal.
-  Pas de flux temps réel : notre promesse est J+1, pas le temps réel.
-- **Push, pas pull** : la veille est un balayage exhaustif push avec
-  garantie de rappel. Un usage conversationnel (pull, best-effort) reste
-  un complément explicitement secondaire, hors du chemin critique du
-  hackathon — voir B7.2-B7.4, qui s'appuient sur un RAG construit en
-  interne sur nos propres résultats accumulés, pas sur un service tiers.
-- **Stockage** : Grist est le front utilisateur (config, résultats,
-  historique, vues) ; l'API Tricoteuses est la donnée, ré-interrogeable à
-  tout instant ; pas de cache disque nécessaire côté acquisition. Besoin
-  futur de stockage intermédiaire → Parquet sur le S3 d'Onyxia (décision
-  différée, défaut nommé).
-- **Matching** : délégué à la recherche server-side de l'API Tricoteuses
-  pour les quatre types de veille (`mot_cle`, `sujet`, `parlementaire`,
-  `dossier`) ; seul le filtrage par `exclusion` reste local. Albert n'est
-  plus utilisé pour la recherche/l'appariement, uniquement pour la
-  génération de la synthèse du digest (B4) — décision qui remplace
-  l'ancienne répartition lexical/métadonnées/sémantique.
-- **Synthèse pilotée par objectif** : chaque veille porte un `objectif` en
-  français (table `veilles`), fourni tel quel dans le prompt de B4. La
-  synthèse n'est pas un résumé générique des extraits, elle répond à
-  l'intention déclarée par MÉTIER. Le design de ce qu'elle doit contenir
-  (B2) est séparé de son implémentation (B4) et de sa publication (B5)
-  pour que les trois puissent avancer sans se bloquer mutuellement.
-- **Notification** : compte Tchap dédié (adossé à une BALF, procédure
-  documentée par la communauté Tchap et le retour d'expérience SSPhub) piloté
-  par `simplematrixbotlib`. Pour le digest (B5), pas de bot qui écoute :
-  une fonction send-only appelée en fin de run.py, qui ne demande rien à
-  héberger ; maubot viendra avec le bot interactif (B7.4), qui réutilisera
-  le même compte. Fallback si le compte n'arrive pas à temps : digest par
-  mail, l'envoi étant isolé derrière une fonction unique.
-- **No-code renforcé** : les colonnes calculées Grist (formules Python dans
-  Grist) sont le territoire de MÉTIER — liens construits depuis l'uid,
-  compteurs — sans toucher au dépôt. Pas de widget custom dans le cœur du
-  projet : les chart widgets et linked widgets standard suffisent (voir
-  `docs/dashboards.md`) ; un widget sur mesure reste une extension
-  possible (B7.5), jamais requis pour la démo.
+- **Source et recherche** : API REST Tricoteuses, filtre de date et
+  recherche plein texte server-side. Un appel par veille. Promesse J+1,
+  pas de temps réel.
+- **Périmètre B4/B5** *(révisé)* : B4 produit le message Tchap complet
+  par veille selon la spec B2 ; B5 est send-only. Remplace l'ancien
+  partage "B4 = paragraphe, B5 = assemblage du digest".
+- **Données du prompt** *(révisé)* : B4 lit les textes complets
+  (dispositif, exposé sommaire) depuis Grist `resultats`. Les garanties
+  anti-hallucination sont désormais : chiffres du JSON de stats
+  uniquement, faits des textes fournis uniquement, URLs construites en
+  Python. Remplace "extraits seuls, jamais le document complet".
+- **Priorisation** *(révisé)* : ordre sémantique par `/v1/rerank`
+  (query = `objectif`, repli `veille_termes`, repli tri `dateDepot`),
+  niveaux Forte/Moyenne/Faible calculés en Python sur des colonnes
+  justifiables (sort notable, député suivi, filtres). Le LLM rédige, ne
+  juge pas. Remplace "tri par date, pas de score".
+- **Cas déluge** *(révisé)* : plafond K = 25 en texte intégral côté
+  Python, stats sur la totalité, le prompt annonce le volume. Remplace
+  les seuils 50/200 en instruction au LLM.
+- **Échec Albert** *(révisé)* : le message part toujours — gabarit de
+  secours déterministe avec bandeau d'échec explicite. Remplace "chaîne
+  vide gérée par B5".
+- **Modèle** : `mistralai/Mistral-Small-3.2-24B-Instruct-2506` par
+  défaut, configurable ; gpt-oss-120b écarté (10 RPM, tokens de
+  raisonnement). Arbitrage sur pièces possible.
+- **Stockage** : Grist front utilisateur ; Tricoteuses ré-interrogeable ;
+  pas de cache disque. Besoin futur → Parquet sur S3 Onyxia.
+- **Notification** : compte Tchap dédié, fonction send-only en fin de
+  run ; maubot seulement pour le bot interactif (B7). Fallback mail.
+- **No-code renforcé** : colonnes calculées Grist = territoire de MÉTIER
+  (liens depuis l'uid, compteurs). Pas de widget custom dans le cœur.
 - **Orchestration** : `run.py` manuel pendant le hackathon, cron externe
-  ensuite. Pas de n8n, pas de scheduler maison, pas de framework.
-- **Hors scope assumé** face aux offres privées : temps réel < 30 min,
-  presse et audiovisuel, transcription vidéo, cartographie des décideurs.
-  Notre périmètre : ciblage (mot-clé, sujet, parlementaire, dossier),
-  digest sourcé et synthétisé selon l'objectif déclaré, suivi du sort —
-  entièrement sur briques de l'État.
+  ensuite. Pas de n8n, pas de framework.
+- **Hors scope assumé** : temps réel < 30 min, presse, transcription,
+  cartographie des décideurs.
