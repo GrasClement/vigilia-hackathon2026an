@@ -1,0 +1,88 @@
+#%%
+from B1.pipeline_veilles import pipeline_veilles_amendements_jour
+import json
+import requests
+
+DOC_ID = "3XJJmJ8TeyMcRWHEUNj4if"
+TABLE_ID = "Test_pipeline"
+API_KEY = "15ec820ee1f8d920cd7b82a4218f94969d8901ae"
+
+#%%
+veille_1, veille_2 = pipeline_veilles_amendements_jour(
+    jour="2026-07-01",
+    doc_id=DOC_ID,
+    table_id=TABLE_ID,
+)
+
+# %%
+
+headers = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json",
+}
+
+TABLE_ID = "Test_api_export"
+
+# -------------------------
+# Création de la table
+# -------------------------
+
+payload_create = {
+    "tables": [
+        {
+            "id": TABLE_ID,
+            "columns": [
+                {
+                    "id": col,
+                    "fields": {
+                        "label": col,
+                        "type": "Text",
+                    },
+                }
+                for col in veille_1.columns
+            ],
+        }
+    ]
+}
+
+r = requests.post(
+    f"https://docs.getgrist.com/api/docs/{DOC_ID}/tables",
+    headers=headers,
+    json=payload_create,
+)
+
+print("Création :", r.status_code)
+print(r.text)
+
+# -------------------------
+# Préparation des données
+# -------------------------
+
+def clean(x):
+    if isinstance(x, (list, dict)):
+        return json.dumps(x, ensure_ascii=False)
+    return x
+
+records = [
+    {
+        "fields": {
+            k: clean(v)
+            for k, v in row.items()
+        }
+    }
+    for row in veille_1.iter_rows(named=True)
+]
+
+# -------------------------
+# Import des données
+# -------------------------
+
+r = requests.post(
+    f"https://docs.getgrist.com/api/docs/{DOC_ID}/tables/{TABLE_ID}/records?noparse=true",
+    headers=headers,
+    json={"records": records},
+)
+
+print("Import :", r.status_code)
+print(r.text)
+# %%
