@@ -1,4 +1,6 @@
 #%%
+import os
+
 from B1.pipeline_veilles_v2 import (
     pipeline_veilles_amendements_jour,
     exporter_veilles_vers_grist,
@@ -6,8 +8,7 @@ from B1.pipeline_veilles_v2 import (
 
 DOC_ID = "3XJJmJ8TeyMcRWHEUNj4if"
 TABLE_ID = "Test_pipeline"
-API_KEY = "15ec820ee1f8d920cd7b82a4218f94969d8901ae"
-
+API_KEY = os.environ["GRIST_API_KEY"]
 
 #%%
 resultats = pipeline_veilles_amendements_jour(
